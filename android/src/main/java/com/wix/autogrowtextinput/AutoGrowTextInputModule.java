@@ -14,11 +14,18 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.UIManager;
+import com.facebook.react.fabric.FabricUIManager;
+import com.facebook.react.fabric.interop.UIBlockViewResolver;
 import com.facebook.react.uimanager.NativeViewHierarchyManager;
 import com.facebook.react.uimanager.UIBlock;
 import com.facebook.react.uimanager.UIManagerModule;
 import com.facebook.react.views.textinput.ReactEditText;
+import com.facebook.react.uimanager.UIManagerHelper;
+import com.facebook.react.uimanager.common.UIManagerType;
 import android.view.inputmethod.InputMethodManager;
+
+interface UIBlockInterface extends UIBlock, com.facebook.react.fabric.interop.UIBlock  {}
 
 /**
  * Created by zachik on 14/09/2017.
@@ -45,14 +52,26 @@ public class AutoGrowTextInputModule extends ReactContextBaseJavaModule {
 
         mTopOffset = 0;
         ReactApplicationContext reactContext = this.getReactApplicationContext();
-        UIManagerModule uiManager = reactContext.getNativeModule(UIManagerModule.class);
-        uiManager.addUIBlock(new UIBlock() {
-            public void execute (NativeViewHierarchyManager nvhm) {
-                editText = (ReactEditText) nvhm.resolveView(tag);
+        UIManager uiManager = UIManagerHelper.getUIManager(reactContext, UIManagerType.FABRIC);
+
+        ((FabricUIManager)uiManager).addUIBlock(new UIBlockInterface() {
+            @Override
+            public void execute(NativeViewHierarchyManager nativeViewHierarchyManager) {
+                executeImpl(nativeViewHierarchyManager, null);
+            }
+
+            @Override
+            public void execute(UIBlockViewResolver uiBlockViewResolver) {
+                executeImpl(null, uiBlockViewResolver);
+            }
+
+            private void executeImpl(NativeViewHierarchyManager nativeViewHierarchyManager, UIBlockViewResolver uiBlockViewResolver) {
+                editText = uiBlockViewResolver != null ? (ReactEditText) uiBlockViewResolver.resolveView(tag) : (ReactEditText) nativeViewHierarchyManager.resolveView(tag);
+
                 if (param.hasKey("maxHeight") && !param.isNull("maxHeight")) {
                     mMaxHeight = dpToPx(param.getDouble("maxHeight"));
                 }
-                editText.setBlurOnSubmit(false);
+                editText.setSubmitBehavior("submit");
                 editText.setOnTouchListener(new View.OnTouchListener() {
                     @Override
                     public boolean onTouch(View v, MotionEvent event) {
@@ -160,13 +179,23 @@ public class AutoGrowTextInputModule extends ReactContextBaseJavaModule {
     // https://github.com/facebook/react-native/pull/12462#issuecomment-298812731
     @ReactMethod
     public void resetKeyboardInput(final int reactTagToReset) {
-        UIManagerModule uiManager = getReactApplicationContext().getNativeModule(UIManagerModule.class);
-        uiManager.addUIBlock(new UIBlock() {
+        ReactApplicationContext reactContext = this.getReactApplicationContext();
+        UIManager uiManager = UIManagerHelper.getUIManager(reactContext, UIManagerType.FABRIC);
+        ((FabricUIManager)uiManager).addUIBlock(new UIBlockInterface() {
             @Override
             public void execute(NativeViewHierarchyManager nativeViewHierarchyManager) {
+                executeImpl(nativeViewHierarchyManager, null);
+            }
+
+            @Override
+            public void execute(UIBlockViewResolver uiBlockViewResolver) {
+                executeImpl(null, uiBlockViewResolver);
+            }
+
+            private void executeImpl(NativeViewHierarchyManager nativeViewHierarchyManager, UIBlockViewResolver uiBlockViewResolver) {
                 InputMethodManager imm = (InputMethodManager) getReactApplicationContext().getBaseContext().getSystemService(Context.INPUT_METHOD_SERVICE);
                 if (imm != null) {
-                    View viewToReset = nativeViewHierarchyManager.resolveView(reactTagToReset);
+                    View viewToReset = uiBlockViewResolver != null ? uiBlockViewResolver.resolveView(reactTagToReset) : nativeViewHierarchyManager.resolveView(reactTagToReset);
                     imm.restartInput(viewToReset);
                 }
             }
