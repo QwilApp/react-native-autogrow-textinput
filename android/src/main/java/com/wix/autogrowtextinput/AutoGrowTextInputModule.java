@@ -67,6 +67,9 @@ public class AutoGrowTextInputModule extends ReactContextBaseJavaModule {
 
             private void executeImpl(NativeViewHierarchyManager nativeViewHierarchyManager, UIBlockViewResolver uiBlockViewResolver) {
                 editText = uiBlockViewResolver != null ? (ReactEditText) uiBlockViewResolver.resolveView(tag) : (ReactEditText) nativeViewHierarchyManager.resolveView(tag);
+                if (editText == null) {
+                    return;
+                }
 
                 if (param.hasKey("maxHeight") && !param.isNull("maxHeight")) {
                     mMaxHeight = dpToPx(param.getDouble("maxHeight"));
